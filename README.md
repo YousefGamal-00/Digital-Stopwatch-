@@ -1,6 +1,6 @@
 # Digital Stopwatch with Dual Mode
 
-This project implements a **Digital Stopwatch** with two modes—**Increment Mode** and **Countdown Mode**—using an ATmega32 microcontroller and multiplexed seven-segment displays.
+This project implements a **Digital Stopwatch** with two modes **Increment Mode** and **Countdown Mode** using an ATmega32 microcontroller and multiplexed seven-segment displays.
 
 ## 📋 **Project Features**
 
@@ -42,6 +42,3 @@ This project implements a **Digital Stopwatch** with two modes—**Increment Mod
 - Effective use of timers and external interrupts in embedded systems.
 - Optimizing performance while controlling multiple seven-segment displays using multiplexing.
 - Designing a user-friendly interface with minimal hardware resources.
-
-## 🙌 **Acknowledgments**
-Special thanks to **Mohamed Tarek** for his guidance throughout this project.
