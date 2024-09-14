@@ -88,50 +88,53 @@ ISR(INT2_vect)
 /*************************************************************/
 void update_state( char UP_DW_bar )
 {
-	if(UP_DW_bar)
+	if (UP_DW_bar)
 	{
-		SET_BIT(PORTD , PD4);
-		CLR_BIT(PORTD , PD5);
+	    SET_BIT(PORTD, PD4);
+	    CLR_BIT(PORTD, PD5);
 
-		++sec_units ;
-		if(sec_units == 10 )
-		{
-			sec_units = 0 ;
-			++sec_tens ;
-			if(sec_tens == 6)
-			{
-				sec_tens = 0 ;
-				++min_units ;
-				if(min_units == 10)
-				{
-					min_units = 0 ;
-					++min_tens ;
-					if(min_tens == 6)
-					{
-						min_tens = 0 ;
-						++hour_units ;
-						if(hour_units == 10)
-						{
-							hour_units = 0 ;
-							++hour_tens ;
-							if(hour_tens == 3)
-							{
-								sec_units = 0 ;
-								sec_tens  = 0 ;
+	    ++sec_units;
+	    if (sec_units == 10)
+	    {
+	        sec_units = 0;
+	        ++sec_tens;
+	        if (sec_tens == 6)
+	        {
+	            sec_tens = 0;
+	            ++min_units;
+	            if (min_units == 10)
+	            {
+	                min_units = 0;
+	                ++min_tens;
+	                if (min_tens == 6)
+	                {
+	                    min_tens = 0;
+	                    ++hour_units;
+	                    if (hour_units == 10)
+	                    {
+	                        hour_units = 0;
+	                        ++hour_tens;
+	                        if (hour_tens == 2 )
+	                        {
+	                        	if( hour_units == 4 )
+	                        	{
+	                        		// Reset to 00:00:00 when it reaches 23:59:59
+									sec_units = 0;
+									sec_tens = 0;
 
-								min_units = 0 ;
-								min_tens  = 0 ;
+									min_units = 0;
+									min_tens = 0;
 
-								hour_units = 0 ;
-								hour_tens  = 0 ;
+									hour_units = 0;
+									hour_tens = 0;
 
-							}
-						}
-					}
-				}
-			}
-		}
-
+	                        	}
+	                            	                        }
+	                    }
+	                }
+	            }
+	        }
+	    }
 	}
 	else
 	{
@@ -427,28 +430,34 @@ int main( void )
 
 
 		PORTA = (PORTA & 0XC0) | (1<<PA5) ; /* Enable the First 7 segment  */
+
 		PORTC = (PORTC & 0XF0) | (sec_units & 0X0F) ; /* Display units of seconds */
-		_delay_ms(3) ; /* delay to notice the number */
+		_delay_ms(2) ; /* delay to notice the number */
 
 		PORTA = (PORTA & 0XC0) | (1<<PA4) ; /* Enable the Second 7 segment  */
+
 		PORTC = (PORTC & 0XF0) | (sec_tens & 0X0F) ; /* Display tens of seconds */
-		_delay_ms(3) ; /* delay to notice the number */
+		_delay_ms(2) ; /* delay to notice the number */
 
 		PORTA = (PORTA & 0XC0) | (1<<PA3) ; /* Enable the Third 7 segment  */
+
 		PORTC = (PORTC & 0XF0) | (min_units & 0X0F) ; /* Display units of minutes */
-		_delay_ms(3) ; /* delay to notice the number */
+		_delay_ms(2) ; /* delay to notice the number */
 
 		PORTA = (PORTA & 0XC0) | (1<<PA2) ; /* Enable the fourth 7 segment  */
+
 		PORTC = (PORTC & 0XF0) | (min_tens & 0X0F) ; /* Display tens of minutes */
-		_delay_ms(3) ; /* delay to notice the number */
+		_delay_ms(2) ; /* delay to notice the number */
 
 		PORTA = (PORTA & 0XC0) | (1<<PA1) ; /* Enable the Fifth 7 segment  */
+
 		PORTC = (PORTC & 0XF0) | (hour_units & 0X0F) ; /* Display units of hours */
-		_delay_ms(3) ; /* delay to notice the number */
+		_delay_ms(2) ; /* delay to notice the number */
 
 		PORTA = (PORTA & 0XC0) | (1<<PA0) ; /* Enable the Sixth 7 segment  */
+
 		PORTC = (PORTC & 0XF0) | (hour_tens & 0X0F) ; /* Display tens of hours */
-		_delay_ms(3) ; /* delay to notice the number */
+		_delay_ms(2) ; /* delay to notice the number */
 
 	}
 	return 0 ;
