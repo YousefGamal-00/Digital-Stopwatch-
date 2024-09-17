@@ -7,24 +7,20 @@
 #define TOG_BIT(REG , BIT)      ( REG ^=  (1 << (BIT)) )
 #define GET_BIT(REG , BIT)      ( (REG >> BIT) & 0X01  )
 /*************************************************************/
-unsigned char sec_units  = 0 ; /* Legal Values [0:9] */
-unsigned char min_units  = 0 ; /* Legal Values [0:9] */
-unsigned char hour_units = 0 ; /* Legal Values [0:9] */
-unsigned char sec_tens   = 0 ; /* Legal Values [0:5] */
-unsigned char min_tens   = 0 ; /* Legal Values [0:5] */
-unsigned char hour_tens  = 0 ; /* Legal Values [0:2] */
-unsigned char Timer_Falg = 0 ; /* indicated for triggered interrupt */
+unsigned char Seconds  = 0 ; /* Legal Values [0:59] */
+unsigned char Minutes  = 0 ; /* Legal Values [0:59] */
+unsigned char Hours    = 0 ; /* Legal Values [0:23] */
 unsigned char UP_DW_bar  = 1 ; /* To differentiate between the counting modes */
-
+volatile unsigned char Timer_Falg = 0 ; /* indicated for triggered interrupt */
 /*************************************************************/
 void Timer_1_CTC_Mode_INIT( void )
 {
-	SREG |= 1<<7 ; /* Global Interrupt Enable */
+	SREG  |= 1<<7 ; /* Global Interrupt Enable */
 	TCCR1A = (1<<FOC1A) | (1<<FOC1B) ; /* non PWM mode */
 	TCCR1B = (1<<WGM12) | (1<<CS10) | (1<<CS12) ; /* 1024 Prescaler */
 	TCNT1  = 0 ; /* start counting from zero */
 	OCR1A  = 15625 ; /* Number of counts required for the timer to trigger an interrupt every one second */
-	TIMSK |= 1<<OCIE1A ;  /* Module interrupt Enable */
+	SET_BIT(TIMSK , OCIE1A);  /* Module interrupt Enable */
 
 }
 /*************************************************************/
@@ -35,22 +31,17 @@ ISR(TIMER1_COMPA_vect)
 /*************************************************************/
 void INT0_INIT( void )
 {
-	MCUCR |= 1<<ISC01 ;  /* interrupt to be triggered with falling edge */
-	GICR  |= 1<<INT0  ; /* module interrupt Enable */
-
+	SET_BIT(MCUCR , ISC01);  /* interrupt to be triggered with falling edge */
+	SET_BIT(GICR  , INT0);  /* module interrupt Enable */
 }
 
 /*************************************************************/
 ISR(INT0_vect)
 {
-	sec_units = 0 ;
-	sec_tens  = 0 ;
+	Hours   = 0 ;
+	Minutes = 0 ;
+	Seconds = 0 ;
 
-	min_units = 0 ;
-	min_tens  = 0 ;
-
-	hour_units = 0 ;
-	hour_tens  = 0 ;
 	CLR_BIT(PORTD , PD0) ; /* to clear the buzzer press on reset */
 	UP_DW_bar  = 1 ; /* start count up again */
 
@@ -59,7 +50,7 @@ ISR(INT0_vect)
 void INT1_INIT( void )
 {
 	MCUCR |= (1<<ISC11) | (1<<ISC10) ; /* interrupt to be triggered with rising edge */
-	GICR  |= 1<<INT1  ; /* module interrupt Enable */
+	SET_BIT(GICR , INT1) ; /* module interrupt Enable */
 }
 
 /*************************************************************/
@@ -74,7 +65,7 @@ ISR(INT1_vect)
 void INT2_INIT( void )
 {
 	CLR_BIT(MCUCSR , ISC2) ; /* interrupt to be triggered with falling edge */
-	GICR  |= 1<<INT2  ; /* module interrupt Enable */
+	SET_BIT(GICR  , INT2)  ; /* module interrupt Enable */
 
 }
 
@@ -93,109 +84,57 @@ void update_state( char UP_DW_bar )
 	    SET_BIT(PORTD, PD4);
 	    CLR_BIT(PORTD, PD5);
 
-	    ++sec_units;
-	    if (sec_units == 10)
+	    ++Seconds ;
+	    if( Seconds == 60 )
 	    {
-	        sec_units = 0;
-	        ++sec_tens;
-	        if (sec_tens == 6)
-	        {
-	            sec_tens = 0;
-	            ++min_units;
-	            if (min_units == 10)
-	            {
-	                min_units = 0;
-	                ++min_tens;
-	                if (min_tens == 6)
-	                {
-	                    min_tens = 0;
-	                    ++hour_units;
-	                    if (hour_units == 10)
-	                    {
-	                        hour_units = 0;
-	                        ++hour_tens;
-	                        if (hour_tens == 2 )
-	                        {
-	                        	if( hour_units == 4 )
-	                        	{
-	                        		// Reset to 00:00:00 when it reaches 23:59:59
-									sec_units = 0;
-									sec_tens = 0;
-
-									min_units = 0;
-									min_tens = 0;
-
-									hour_units = 0;
-									hour_tens = 0;
-
-	                        	}
-	                            	                        }
-	                    }
-	                }
-	            }
-	        }
+	    	Seconds = 0 ;
+	    	++Minutes ;
+	    	if( Minutes == 60 )
+	    	{
+	    		Minutes = 0 ;
+	    		++Hours;
+	    		if( Hours == 24 )
+	    		{
+	    			Seconds = 0 ;
+	    			Minutes = 0 ;
+	    			Hours = 0 ;
+	    		}
+	    	}
 	    }
 	}
+
 	else
 	{
 		SET_BIT(PORTD , PD5);
 		CLR_BIT(PORTD , PD4);
 
-		if( ! (sec_units || sec_tens || min_units || min_tens || hour_units || hour_tens) )
+		if( !(Seconds || Minutes || Hours) )
 		{
-			SET_BIT(PORTD , PD0) ; /* turn on the Alarm */
+			SET_BIT(PORTD , PD0); /* turn on the Alarm */
 		}
 		else
 		{
-			if(sec_units != 0)
-					{
-						--sec_units ;
-					}
-					else
-					{
-						sec_units = 9 ;
-						if(sec_tens != 0)
-						{
-							--sec_tens ;
-						}
-						else
-						{
-							sec_tens = 5 ;
-							if(min_units != 0)
-							{
-								--min_units ;
-							}
-							else
-							{
-								min_units = 9 ;
-								if(min_tens != 0)
-								{
-									--min_tens ;
-								}
-								else
-								{
-									min_tens = 5;
-									if(hour_units != 0)
-									{
-										--hour_units ;
-									}
-									else
-									{
-										hour_units = 9 ;
-										if(hour_tens != 0)
-										{
-											--hour_tens ;
-										}
-
-									}
-								}
-							}
-						}
-					}
-
+			if( Seconds > 0 )
+				--Seconds;
+			else
+			{
+				if( Minutes > 0 )
+				{
+					Seconds = 59;  // Reset Seconds
+					--Minutes;
 				}
+				else
+				{
+					if( Hours > 0 )
+					{
+						Seconds = 59;
+						Minutes = 59;
+						--Hours;
+					}
+				}
+			}
 		}
-
+	}
 }
 /*************************************************************/
 int main( void )
@@ -217,13 +156,13 @@ int main( void )
 	INT1_INIT( ) ;
 	INT2_INIT( ) ;
 
-	unsigned char Flag_count_mode_pressed = 1 ; /* indication for pressing on the button */
-	unsigned char Flag_dec_Sec_pressed    = 1 ; /* indication for pressing on the button */
-	unsigned char Flag_inc_Sec_pressed    = 1 ; /* indication for pressing on the button */
-	unsigned char Flag_dec_min_pressed    = 1 ; /* indication for pressing on the button */
-	unsigned char Flag_inc_min_pressed    = 1 ; /* indication for pressing on the button */
-	unsigned char Flag_dec_hour_pressed   = 1 ; /* indication for pressing on the button */
-	unsigned char Flag_inc_hour_pressed   = 1 ; /* indication for pressing on the button */
+volatile unsigned char Flag_count_mode_pressed = 1 ; /* indication for pressing on the button */
+volatile unsigned char Flag_dec_Sec_pressed    = 1 ; /* indication for pressing on the button */
+volatile unsigned char Flag_inc_Sec_pressed    = 1 ; /* indication for pressing on the button */
+volatile unsigned char Flag_dec_min_pressed    = 1 ; /* indication for pressing on the button */
+volatile unsigned char Flag_inc_min_pressed    = 1 ; /* indication for pressing on the button */
+volatile unsigned char Flag_dec_hour_pressed   = 1 ; /* indication for pressing on the button */
+volatile unsigned char Flag_inc_hour_pressed   = 1 ; /* indication for pressing on the button */
 
 	for(;;)
 	{
@@ -255,18 +194,14 @@ int main( void )
 				if( Flag_inc_Sec_pressed )
 				{
 					Flag_inc_Sec_pressed = 0 ;
-					if(sec_units != 9)
+					if(Seconds < 59)
 					{
-						++sec_units ;
+						++Seconds ;
 					}
-					else if(sec_tens !=5 )
-					{
-						sec_units = 0 ;
-						++sec_tens ;
-					}
+
 					else
 					{
-						/* no change for seconds = 59 */
+						/* no change for Seconds = 59 */
 					}
 				}
 			}
@@ -285,18 +220,13 @@ int main( void )
 				if( Flag_dec_Sec_pressed )
 				{
 					Flag_dec_Sec_pressed = 0 ;
-					if(sec_units != 0)
+					if(Seconds > 0)
 					{
-						--sec_units ;
-					}
-					else if(sec_tens != 0 )
-					{
-						sec_units = 9 ;
-						--sec_tens ;
+						--Seconds ;
 					}
 					else
 					{
-						/* no change for seconds = 00 */
+						/* no change for Seconds = 00 */
 					}
 				}
 			}
@@ -315,18 +245,13 @@ int main( void )
 				if( Flag_inc_min_pressed )
 				{
 					Flag_inc_min_pressed = 0 ;
-					if(min_units != 9)
+					if(Minutes < 59)
 					{
-						++min_units ;
-					}
-					else if(min_tens !=5 )
-					{
-						min_units = 0 ;
-						++min_tens ;
+						++Minutes ;
 					}
 					else
 					{
-						/* no change for minutes = 59 */
+						/* no change for Minutes = 59 */
 					}
 				}
 			}
@@ -345,18 +270,13 @@ int main( void )
 				if( Flag_dec_min_pressed )
 				{
 					Flag_dec_min_pressed = 0 ;
-					if(min_units != 0)
+					if(Minutes > 0)
 					{
-						--min_units ;
-					}
-					else if(min_tens != 0 )
-					{
-						min_units = 9 ;
-						--min_tens ;
+						--Minutes ;
 					}
 					else
 					{
-						/* no change for minutes = 00 */
+						/* no change for Minutes = 00 */
 					}
 				}
 			}
@@ -375,14 +295,9 @@ int main( void )
 				if( Flag_inc_hour_pressed )
 				{
 					Flag_inc_hour_pressed = 0 ;
-					if(hour_units != 9)
+					if(Hours < 99)
 					{
-						++hour_units ;
-					}
-					else if( hour_tens!=9 )
-					{
-						hour_units = 0 ;
-						++hour_tens ;
+						++Hours ;
 					}
 					else
 					{
@@ -405,14 +320,9 @@ int main( void )
 				if( Flag_dec_hour_pressed )
 				{
 					Flag_dec_hour_pressed = 0 ;
-					if(hour_units != 0)
+					if(Hours > 0)
 					{
-						--hour_units ;
-					}
-					else if(hour_tens != 0)
-					{
-						--hour_tens  ;
-						hour_units = 9 ;
+						--Hours ;
 					}
 					else
 					{
@@ -430,33 +340,32 @@ int main( void )
 
 
 		PORTA = (PORTA & 0XC0) | (1<<PA5) ; /* Enable the First 7 segment  */
-
-		PORTC = (PORTC & 0XF0) | (sec_units & 0X0F) ; /* Display units of seconds */
+		PORTC = (PORTC & 0XF0) | ( (Seconds%10) & 0X0F ) ; /* Display units of Seconds */
 		_delay_ms(2) ; /* delay to notice the number */
+
 
 		PORTA = (PORTA & 0XC0) | (1<<PA4) ; /* Enable the Second 7 segment  */
-
-		PORTC = (PORTC & 0XF0) | (sec_tens & 0X0F) ; /* Display tens of seconds */
+		PORTC = (PORTC & 0XF0) | ( (Seconds/10) & 0X0F) ; /* Display tens of Seconds */
 		_delay_ms(2) ; /* delay to notice the number */
+
 
 		PORTA = (PORTA & 0XC0) | (1<<PA3) ; /* Enable the Third 7 segment  */
-
-		PORTC = (PORTC & 0XF0) | (min_units & 0X0F) ; /* Display units of minutes */
+		PORTC = (PORTC & 0XF0) | ( (Minutes%10) & 0X0F) ; /* Display units of Minutes */
 		_delay_ms(2) ; /* delay to notice the number */
+
 
 		PORTA = (PORTA & 0XC0) | (1<<PA2) ; /* Enable the fourth 7 segment  */
-
-		PORTC = (PORTC & 0XF0) | (min_tens & 0X0F) ; /* Display tens of minutes */
+		PORTC = (PORTC & 0XF0) | ( (Minutes/10) & 0X0F) ; /* Display tens of Minutes */
 		_delay_ms(2) ; /* delay to notice the number */
+
 
 		PORTA = (PORTA & 0XC0) | (1<<PA1) ; /* Enable the Fifth 7 segment  */
-
-		PORTC = (PORTC & 0XF0) | (hour_units & 0X0F) ; /* Display units of hours */
+		PORTC = (PORTC & 0XF0) | ( (Hours%10) & 0X0F) ; /* Display units of hours */
 		_delay_ms(2) ; /* delay to notice the number */
 
-		PORTA = (PORTA & 0XC0) | (1<<PA0) ; /* Enable the Sixth 7 segment  */
 
-		PORTC = (PORTC & 0XF0) | (hour_tens & 0X0F) ; /* Display tens of hours */
+		PORTA = (PORTA & 0XC0) | (1<<PA0) ; /* Enable the Sixth 7 segment  */
+		PORTC = (PORTC & 0XF0) | ( (Hours/10) & 0X0F) ; /* Display tens of hours */
 		_delay_ms(2) ; /* delay to notice the number */
 
 	}
